@@ -111,12 +111,18 @@ router.post(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
+      // 🧹 borrar imagen anterior (safe)
       if (user.profilePictureId) {
-        await cloudinary.uploader.destroy(user.profilePictureId);
+        try {
+          await cloudinary.uploader.destroy(user.profilePictureId);
+        } catch (err) {
+          console.warn("Cloudinary delete failed:", err.message);
+        }
       }
 
-      user.profilePicture = req.file.path;
-      user.profilePictureId = req.file.filename;
+      // 💾 guardar nueva
+      user.profilePicture = req.file.path;      // secure_url
+      user.profilePictureId = req.file.filename; // public_id
 
       await user.save();
 
