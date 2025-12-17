@@ -37,24 +37,24 @@ router.put("/users", auth, async (req, res) => {
       wallpaper
     } = req.body;
 
-    const updated = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        email,
-        fullName,
-        month,
-        date,
-        year,
-        gender,
-        sideMenuColor,
-        themeMode,
-        profilePicture,
-        wallpaper
-      },
-      { new: true }
-    ).select("-passwordHash");
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.json({ message: "User updated", updated });
+    // Actualizar solo campos enviados
+    if (email) user.email = email;
+    if (fullName) user.fullName = fullName;
+    if (month) user.month = month;
+    if (date) user.date = date;
+    if (year) user.year = year;
+    if (gender) user.gender = gender;
+    if (sideMenuColor) user.sideMenuColor = sideMenuColor;
+    if (themeMode) user.themeMode = themeMode;
+    if (wallpaper) user.wallpaper = wallpaper;
+    if (profilePicture) user.profilePicture = profilePicture; // ⬅️ clave
+
+    await user.save();
+
+    res.json({ message: "User updated", updated: user });
 
   } catch (error) {
     console.error("Update error:", error);
