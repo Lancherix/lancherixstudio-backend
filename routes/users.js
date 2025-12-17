@@ -103,12 +103,34 @@ router.post(
   "/users/profile-picture",
   auth,
   upload.single("profilePicture"),
-  (req, res) => {
-    console.log("FILE:", req.file);
-    res.json({
-      ok: true,
-      file: req.file,
-    });
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const user = await User.findById(req.user.id);
+
+      // borrar imagen anterior
+      if (user.profilePicture?.public_id) {
+        await cloudinary.uploader.destroy(
+          user.profilePicture.public_id
+        );
+      }
+
+      const uploadResult = await cloudinary.uploader.upload(
+        req.file.path,
+        { folder: "profile_pictures" }
+      );
+
+      res.json({
+        url: uploadResult.secure_url,
+        public_id: uploadResult.public_id
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: "Upload failed" });
+    }
   }
 );
 
