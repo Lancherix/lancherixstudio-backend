@@ -101,7 +101,6 @@ router.get("/users/search", async (req, res) => {
 
 router.post(
   "/users/profile-picture",
-  auth,
   upload.single("profilePicture"),
   (req, res) => {
     console.log("FILE:", req.file);
