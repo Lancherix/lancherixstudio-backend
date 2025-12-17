@@ -99,6 +99,7 @@ router.get("/users/search", async (req, res) => {
   }
 });
 
+// routes/users.js
 router.post(
   "/users/profile-picture",
   auth,
@@ -111,24 +112,27 @@ router.post(
 
       const user = await User.findById(req.user.id);
 
-      // borrar imagen anterior
+      // borrar imagen anterior si existe
       if (user.profilePicture?.public_id) {
-        await cloudinary.uploader.destroy(
-          user.profilePicture.public_id
-        );
+        await cloudinary.uploader.destroy(user.profilePicture.public_id);
       }
 
-      const uploadResult = await cloudinary.uploader.upload(
-        req.file.path,
-        { folder: "profile_pictures" }
-      );
-
-      res.json({
-        url: uploadResult.secure_url,
-        public_id: uploadResult.public_id
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "profile_pictures",
       });
 
+      // guardar en MongoDB
+      user.profilePicture = {
+        url: uploadResult.secure_url,
+        public_id: uploadResult.public_id
+      };
+
+      await user.save();
+
+      res.json(user.profilePicture);
+
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Upload failed" });
     }
   }
