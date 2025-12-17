@@ -105,7 +105,10 @@ router.post(
   upload.single("profilePicture"),
   (req, res) => {
     console.log("FILE:", req.file);
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      file: req.file,
+    });
   }
 );
 
