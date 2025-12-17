@@ -2,6 +2,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import upload from "../middleware/upload.js";
+import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -96,5 +98,34 @@ router.get("/users/search", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.post(
+  "/users/profile-picture",
+  auth,
+  upload.single("profilePicture"),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id);
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Save new image
+      user.profilePicture = req.file.path;
+      user.profilePictureId = req.file.filename;
+
+      await user.save();
+
+      res.json({
+        message: "Profile picture updated",
+        profilePicture: user.profilePicture,
+      });
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
 
 export default router;
