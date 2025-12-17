@@ -111,21 +111,22 @@ router.post(
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Save new image
+      if (user.profilePictureId) {
+        await cloudinary.uploader.destroy(user.profilePictureId);
+      }
+
       user.profilePicture = req.file.path;
       user.profilePictureId = req.file.filename;
 
       await user.save();
 
       res.json({
-        message: "Profile picture updated",
         profilePicture: user.profilePicture,
       });
+
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ message: "Server error" });
     }
   }
 );
-
-export default router;

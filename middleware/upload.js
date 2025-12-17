@@ -7,7 +7,6 @@ const storage = new CloudinaryStorage({
   params: {
     folder: "profile_pictures",
     allowed_formats: ["jpg", "png", "jpeg", "webp"],
-    public_id: (req) => `user_${req.user.id}`,
   },
 });
 
