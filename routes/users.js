@@ -167,14 +167,14 @@ router.post(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Delete old wallpaper from Cloudinary if it exists
+      // Delete old wallpaper if exists
       if (user.wallpaper?.public_id) {
         await cloudinary.uploader.destroy(user.wallpaper.public_id);
       }
 
-      // Upload new wallpaper to Cloudinary
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "wallpapers" },
+      // Upload new wallpaper
+      cloudinary.uploader.upload_stream(
+        { folder: "wallpapers" }, // <- make sure this folder is correct
         async (error, result) => {
           if (error) {
             console.error(error);
@@ -189,10 +189,7 @@ router.post(
           await user.save();
           res.json(user.wallpaper);
         }
-      );
-
-      // Pipe the file buffer into Cloudinary
-      uploadStream.end(req.file.buffer);
+      ).end(req.file.buffer); // pipe buffer to Cloudinary
 
     } catch (error) {
       console.error(error);
