@@ -112,7 +112,6 @@ router.post(
 
       const user = await User.findById(req.user.id);
 
-      // borrar imagen anterior si existe
       if (user.profilePicture?.public_id) {
         await cloudinary.uploader.destroy(user.profilePicture.public_id);
       }
@@ -121,7 +120,6 @@ router.post(
         folder: "profile_pictures",
       });
 
-      // guardar en MongoDB
       user.profilePicture = {
         url: uploadResult.secure_url,
         public_id: uploadResult.public_id
