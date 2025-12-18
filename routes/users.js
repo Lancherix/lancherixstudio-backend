@@ -194,7 +194,6 @@ router.post(
 
       // Pipe the file buffer into Cloudinary
       uploadStream.end(req.file.buffer);
-      cleanupUnusedProfilePictures();
 
     } catch (error) {
       console.error(error);
