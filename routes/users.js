@@ -138,4 +138,22 @@ router.post(
   }
 );
 
+router.delete('/users/profile-picture', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (user.profilePicture?.public_id) {
+      await cloudinary.uploader.destroy(user.profilePicture.public_id);
+      user.profilePicture = undefined;
+      await user.save();
+    }
+
+    cleanupUnusedProfilePictures();
+    res.json({ message: 'Profile picture removed' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to remove profile picture' });
+  }
+});
+
 export default router;
