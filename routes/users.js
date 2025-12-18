@@ -5,7 +5,6 @@ import User from "../models/User.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
-import { cleanupUnusedWallpapers } from "../utils/cleanupUnusedWallpapers.js";
 
 const router = express.Router();
 
