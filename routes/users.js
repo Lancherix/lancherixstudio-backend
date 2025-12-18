@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
+import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
 
 const router = express.Router();
 
@@ -126,6 +127,7 @@ router.post(
       };
 
       await user.save();
+      cleanupUnusedProfilePictures();
 
       res.json(user.profilePicture);
 
