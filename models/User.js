@@ -17,7 +17,10 @@ const UserSchema = new mongoose.Schema({
     public_id: { type: String, default: "" }
   },
 
-  wallpaper: { type: String, default: "/Images/backgroundImage.jpeg" },
+  wallpaper: {
+    url: { type: String, default: "/Images/backgroundImage.jpeg" },
+    public_id: { type: String, default: "" }
+  },
   sideMenuColor: { type: String, default: "rgba(255, 255, 255, 1)" },
   themeMode: { type: String, default: "light" }
 });
