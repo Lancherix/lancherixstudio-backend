@@ -167,23 +167,21 @@ router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, re
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Eliminar wallpaper anterior de Cloudinary si existe
     if (user.wallpaper?.public_id) {
       await cloudinary.uploader.destroy(user.wallpaper.public_id);
     }
 
-    // Subir a Cloudinary igual que profile pictures
     const uploadResult = await cloudinary.uploader.upload(req.file.path, {
       folder: "wallpapers",
     });
 
-    // Guardar en la DB
     user.wallpaper = {
       url: uploadResult.secure_url,
       public_id: uploadResult.public_id,
     };
 
     await user.save();
+    cleanupUnusedProfilePictures();
 
     res.json({
       url: uploadResult.secure_url,
