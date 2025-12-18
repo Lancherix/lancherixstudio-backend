@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
+import { cleanupUnusedWallpapers } from "../utils/cleanupUnusedWallpapers.js";
 
 const router = express.Router();
 
@@ -193,6 +194,7 @@ router.post(
 
       // Pipe the file buffer into Cloudinary
       uploadStream.end(req.file.buffer);
+      cleanupUnusedProfilePictures();
 
     } catch (error) {
       console.error(error);
