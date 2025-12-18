@@ -157,48 +157,43 @@ router.delete('/users/profile-picture', auth, async (req, res) => {
   }
 });
 
-router.post(
-  "/users/wallpaper",
-  auth,
-  upload.single("wallpaper"),
-  async (req, res) => {
-    try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-      const user = await User.findById(req.user.id);
-      if (!user) return res.status(404).json({ message: "User not found" });
-
-      // Delete old wallpaper
-      if (user.wallpaper?.public_id) {
-        await cloudinary.uploader.destroy(user.wallpaper.public_id);
-      }
-
-      // Upload new wallpaper
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: "wallpapers" },
-        async (error, result) => {
-          if (error) {
-            console.error(error);
-            return res.status(500).json({ message: "Cloudinary upload failed" });
-          }
-
-          user.wallpaper = {
-            url: result.secure_url,
-            public_id: result.public_id,
-          };
-
-          await user.save();
-          res.json(user.wallpaper);
-        }
-      );
-
-      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
-
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Upload failed" });
+// Subir wallpaper
+router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Eliminar wallpaper anterior de Cloudinary si existe
+    if (user.wallpaper?.public_id) {
+      await cloudinary.uploader.destroy(user.wallpaper.public_id);
+    }
+
+    // Subir a Cloudinary igual que profile pictures
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "wallpapers",
+    });
+
+    // Guardar en la DB
+    user.wallpaper = {
+      url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
+    };
+
+    await user.save();
+
+    res.json({
+      url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
+    });
+
+  } catch (error) {
+    console.error("Wallpaper upload error:", error);
+    res.status(500).json({ message: "Wallpaper upload failed" });
   }
-);
+});
 
 export default router;
