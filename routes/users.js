@@ -6,7 +6,6 @@ import auth from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
-import multer from "multer";
 
 const router = express.Router();
 const storage = multer.memoryStorage();
