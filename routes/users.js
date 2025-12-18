@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
+import streamifier from "streamifier";
 
 const router = express.Router();
 
@@ -167,14 +168,14 @@ router.post(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Delete old wallpaper if exists
+      // Delete old wallpaper
       if (user.wallpaper?.public_id) {
         await cloudinary.uploader.destroy(user.wallpaper.public_id);
       }
 
       // Upload new wallpaper
-      cloudinary.uploader.upload_stream(
-        { folder: "wallpapers" }, // <- make sure this folder is correct
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "wallpapers" },
         async (error, result) => {
           if (error) {
             console.error(error);
@@ -189,7 +190,9 @@ router.post(
           await user.save();
           res.json(user.wallpaper);
         }
-      ).end(req.file.buffer); // pipe buffer to Cloudinary
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
 
     } catch (error) {
       console.error(error);
