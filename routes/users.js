@@ -7,7 +7,6 @@ import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
 
 const router = express.Router();
 const storage = multer.memoryStorage();
