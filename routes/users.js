@@ -2,11 +2,16 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import auth from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Middleware to verify token
 const auth = (req, res, next) => {
@@ -162,28 +167,37 @@ router.post(
   upload.single("wallpaper"),
   async (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
       const user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
 
+      // Delete old wallpaper from Cloudinary if it exists
       if (user.wallpaper?.public_id) {
         await cloudinary.uploader.destroy(user.wallpaper.public_id);
       }
 
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "wallpapers",
-      });
+      // Upload new wallpaper to Cloudinary
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "wallpapers" },
+        async (error, result) => {
+          if (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Cloudinary upload failed" });
+          }
 
-      user.wallpaper = {
-        url: uploadResult.secure_url,
-        public_id: uploadResult.public_id
-      };
+          user.wallpaper = {
+            url: result.secure_url,
+            public_id: result.public_id,
+          };
 
-      await user.save();
+          await user.save();
+          res.json(user.wallpaper);
+        }
+      );
 
-      res.json(user.wallpaper);
+      // Pipe the file buffer into Cloudinary
+      uploadStream.end(req.file.buffer);
 
     } catch (error) {
       console.error(error);
