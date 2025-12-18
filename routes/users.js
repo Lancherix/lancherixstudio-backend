@@ -2,14 +2,11 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import auth from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
 
 const router = express.Router();
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // Middleware to verify token
 const auth = (req, res, next) => {
