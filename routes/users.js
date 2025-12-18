@@ -156,4 +156,40 @@ router.delete('/users/profile-picture', auth, async (req, res) => {
   }
 });
 
+router.post(
+  "/users/wallpaper",
+  auth,
+  upload.single("wallpaper"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const user = await User.findById(req.user.id);
+
+      if (user.wallpaper?.public_id) {
+        await cloudinary.uploader.destroy(user.wallpaper.public_id);
+      }
+
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "wallpapers",
+      });
+
+      user.wallpaper = {
+        url: uploadResult.secure_url,
+        public_id: uploadResult.public_id
+      };
+
+      await user.save();
+
+      res.json(user.wallpaper);
+
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Upload failed" });
+    }
+  }
+);
+
 export default router;
