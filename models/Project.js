@@ -1,0 +1,63 @@
+import mongoose from "mongoose";
+
+const ProjectSchema = new mongoose.Schema(
+  {
+    /* Basic info */
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    icon: {
+      type: String,
+      default: "🚀",
+    },
+
+    /* Ownership & access */
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    collaborators: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    visibility: {
+      type: String,
+      enum: ["private", "public"],
+      default: "private",
+      index: true,
+    },
+
+    /* Advanced options */
+    subject: {
+      type: String,
+      trim: true,
+    },
+
+    deadline: Date,
+
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
+
+    /* Unique project URL */
+    slug: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Project", ProjectSchema);

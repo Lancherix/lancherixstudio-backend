@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
+import projectsRoutes from "./routes/projects.js";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(cors());
 // Routes
 app.use("/auth", authRoutes);
 app.use("/api", userRoutes);
+app.use("/api/projects", projectsRoutes);
 
 // Test route
 app.get("/", (req, res) => {
