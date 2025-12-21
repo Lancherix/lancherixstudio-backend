@@ -34,7 +34,8 @@ router.post("/", authMiddleware, async (req, res) => {
     }
 
     // Generate unique slug
-    const baseSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    let baseSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    if (!baseSlug) baseSlug = "-";
     let slug = baseSlug;
     let counter = 1;
     while (await Project.exists({ slug })) slug = `${baseSlug}-${counter++}`;
