@@ -20,43 +20,26 @@ router.post("/", authMiddleware, async (req, res) => {
       collaborators = [],
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: "Project name is required" });
-    }
+    if (!name) return res.status(400).json({ error: "Project name is required" });
 
-    /* ─────────── Owner ─────────── */
     const ownerId = req.user.id;
 
-    /* ─────────── Validate collaborators ─────────── */
-    // Remove owner if frontend sends it by mistake
-    const uniqueCollaborators = [
-      ...new Set(collaborators.filter(id => id !== ownerId)),
-    ];
+    // Remove owner from collaborators if sent
+    const uniqueCollaborators = [...new Set(collaborators.filter(id => id !== ownerId))];
 
     // Ensure all collaborators exist
-    const usersCount = await User.countDocuments({
-      _id: { $in: uniqueCollaborators },
-    });
-
+    const usersCount = await User.countDocuments({ _id: { $in: uniqueCollaborators } });
     if (usersCount !== uniqueCollaborators.length) {
       return res.status(400).json({ error: "Invalid collaborator detected" });
     }
 
-    /* ─────────── Generate unique slug ─────────── */
-    const baseSlug = name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-
+    // Generate unique slug
+    const baseSlug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     let slug = baseSlug;
     let counter = 1;
+    while (await Project.exists({ slug })) slug = `${baseSlug}-${counter++}`;
 
-    while (await Project.exists({ slug })) {
-      slug = `${baseSlug}-${counter++}`;
-    }
-
-    /* ─────────── Create project ─────────── */
+    // Create project
     const project = await Project.create({
       name,
       icon,
@@ -69,7 +52,19 @@ router.post("/", authMiddleware, async (req, res) => {
       collaborators: uniqueCollaborators,
     });
 
+    // Add project ID to owner's projects
+    await User.findByIdAndUpdate(ownerId, { $push: { projects: project._id } });
+
+    // Add project ID to collaborators' projects
+    if (uniqueCollaborators.length > 0) {
+      await User.updateMany(
+        { _id: { $in: uniqueCollaborators } },
+        { $push: { projects: project._id } }
+      );
+    }
+
     res.status(201).json(project);
+
   } catch (err) {
     console.error("Create project error:", err);
     res.status(500).json({ error: "Failed to create project" });

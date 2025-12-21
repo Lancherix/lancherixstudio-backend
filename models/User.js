@@ -22,7 +22,13 @@ const UserSchema = new mongoose.Schema({
     public_id: { type: String, default: "" }
   },
   sideMenuColor: { type: String, default: "rgba(255, 255, 255, 1)" },
-  themeMode: { type: String, default: "light" }
+  themeMode: { type: String, default: "light" },
+  projects: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+    }
+  ],
 });
 
 export default mongoose.model("User", UserSchema);
