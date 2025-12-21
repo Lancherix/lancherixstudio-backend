@@ -108,7 +108,11 @@ router.get("/me", async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("-passwordHash");
+    const user = await User.findById(decoded.id)
+      .select("-passwordHash")
+      .populate("projects")
+      .exec();
+
     res.json(user);
 
   } catch (error) {
