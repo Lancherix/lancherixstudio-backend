@@ -112,11 +112,14 @@ router.get("/:slug", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Permission check
     const isOwner = project.owner._id.toString() === userId;
     const isCollaborator = project.collaborators.some(
       u => u._id.toString() === userId
     );
+
+    if (project.visibility === "public") {
+      return res.json(project);
+    }
 
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Access denied" });
