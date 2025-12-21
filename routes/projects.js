@@ -109,8 +109,8 @@ router.get("/:slug", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const project = await Project.findOne({ slug })
-      .populate("owner", "username fullName")
-      .populate("collaborators", "username fullName");
+      .populate("owner", "username fullName profilePicture")
+      .populate("collaborators", "username fullName profilePicture");
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
