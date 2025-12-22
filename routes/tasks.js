@@ -94,3 +94,5 @@ router.delete("/:id", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to delete task" });
   }
 });
+
+export default router;
