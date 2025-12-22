@@ -35,8 +35,6 @@ const ProjectSchema = new mongoose.Schema(
       default: "private",
       index: true,
     },
-
-    /* Advanced options */
     subject: {
       type: String,
       trim: true,
@@ -49,12 +47,14 @@ const ProjectSchema = new mongoose.Schema(
       enum: ["low", "medium", "high"],
       default: "medium",
     },
-
-    /* Unique project URL */
     slug: {
       type: String,
       unique: true,
       index: true,
+    },
+    links: {
+      type: [String],
+      default: [],
     },
   },
   { timestamps: true }

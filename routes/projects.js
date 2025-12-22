@@ -132,4 +132,37 @@ router.get("/:slug", authMiddleware, async (req, res) => {
   }
 });
 
+// PATCH /api/projects/:projectId/links
+router.patch("/:projectId/links", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { links } = req.body; // se espera un array de strings
+    const userId = req.user.id;
+
+    if (!Array.isArray(links)) {
+      return res.status(400).json({ error: "Links must be an array" });
+    }
+
+    // Validar que el usuario tenga permisos (owner o collaborator)
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const isOwner = project.owner.toString() === userId;
+    const isCollaborator = project.collaborators.some(id => id.toString() === userId);
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Guardar el array de links
+    project.links = links;
+    await project.save();
+
+    res.json(project);
+  } catch (err) {
+    console.error("Update links error:", err);
+    res.status(500).json({ error: "Failed to update links" });
+  }
+});
+
 export default router;
