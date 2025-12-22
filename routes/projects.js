@@ -165,4 +165,117 @@ router.patch("/:projectId/links", authMiddleware, async (req, res) => {
   }
 });
 
+/* ─────────────────────────────
+   Update project
+   ───────────────────────────── */
+router.patch("/:projectId", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const isOwner = project.owner.toString() === userId;
+    const isCollaborator = project.collaborators.some(
+      id => id.toString() === userId
+    );
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const fields = [
+      "name",
+      "icon",
+      "visibility",
+      "subject",
+      "deadline",
+      "priority",
+    ];
+
+    fields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        project[field] = req.body[field];
+      }
+    });
+
+    await project.save();
+    res.json(project);
+
+  } catch (err) {
+    console.error("Update project error:", err);
+    res.status(500).json({ error: "Failed to update project" });
+  }
+});
+
+/* ─────────────────────────────
+   Leave project
+   ───────────────────────────── */
+router.post("/:projectId/leave", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const isOwner = project.owner.toString() === userId;
+    const isCollaborator = project.collaborators.some(
+      id => id.toString() === userId
+    );
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "You are not a member of this project" });
+    }
+
+    // ─── Remove project from user ───────────────────
+    await User.findByIdAndUpdate(userId, {
+      $pull: { projects: project._id }
+    });
+
+    // ─── CASE 1: Collaborator leaves ────────────────
+    if (!isOwner) {
+      project.collaborators = project.collaborators.filter(
+        id => id.toString() !== userId
+      );
+
+      await project.save();
+      return res.json({ message: "Left project successfully", project });
+    }
+
+    // ─── CASE 2: Owner leaves ───────────────────────
+    if (project.collaborators.length > 0) {
+      // Assign new owner
+      const newOwnerId = project.collaborators[0];
+
+      project.owner = newOwnerId;
+      project.collaborators = project.collaborators
+        .filter(id => id.toString() !== newOwnerId.toString());
+
+      await project.save();
+      return res.json({
+        message: "Owner left project, ownership transferred",
+        project,
+      });
+    }
+
+    // ─── CASE 3: Owner leaves and no members left ───
+    await Project.findByIdAndDelete(project._id);
+
+    return res.json({
+      message: "Project deleted because no members remained",
+      deleted: true,
+    });
+
+  } catch (err) {
+    console.error("Leave project error:", err);
+    res.status(500).json({ error: "Failed to leave project" });
+  }
+});
+
 export default router;
