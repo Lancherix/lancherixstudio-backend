@@ -198,8 +198,9 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       }
     });
 
-    // === Collaborators ===
     if (Array.isArray(req.body.collaborators)) {
+      const oldCollaborators = project.collaborators.map(id => id.toString());
+
       // Evitar duplicados y owner incluido
       const newCollaborators = req.body.collaborators
         .filter(id => id !== project.owner.toString())
@@ -212,6 +213,24 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       }
 
       project.collaborators = newCollaborators;
+
+      // === Agregar proyecto a usuarios nuevos ===
+      const added = newCollaborators.filter(id => !oldCollaborators.includes(id));
+      if (added.length > 0) {
+        await User.updateMany(
+          { _id: { $in: added } },
+          { $addToSet: { projects: project._id } }
+        );
+      }
+
+      // === Remover proyecto de usuarios eliminados ===
+      const removed = oldCollaborators.filter(id => !newCollaborators.includes(id));
+      if (removed.length > 0) {
+        await User.updateMany(
+          { _id: { $in: removed } },
+          { $pull: { projects: project._id } }
+        );
+      }
     }
 
     await project.save();
@@ -309,6 +328,12 @@ router.post("/:projectId/remove-member", authMiddleware, async (req, res) => {
     );
 
     await project.save();
+
+    // === remover proyecto del usuario eliminado ===
+    await User.findByIdAndUpdate(memberId, {
+      $pull: { projects: project._id }
+    });
+
     res.json(project);
 
   } catch (err) {
