@@ -187,7 +187,7 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const fields = [
+    const allowedFields = [
       "name",
       "icon",
       "visibility",
@@ -196,7 +196,7 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       "priority",
     ];
 
-    fields.forEach(field => {
+    allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         project[field] = req.body[field];
       }
@@ -275,6 +275,34 @@ router.post("/:projectId/leave", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Leave project error:", err);
     res.status(500).json({ error: "Failed to leave project" });
+  }
+});
+
+router.post("/:projectId/remove-member", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { memberId } = req.body;
+    const userId = req.user.id;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    if (project.owner.toString() !== userId) {
+      return res.status(403).json({ error: "Only owner can remove members" });
+    }
+
+    project.collaborators = project.collaborators.filter(
+      id => id.toString() !== memberId
+    );
+
+    await project.save();
+    res.json(project);
+
+  } catch (err) {
+    console.error("Remove member error:", err);
+    res.status(500).json({ error: "Failed to remove member" });
   }
 });
 
