@@ -174,14 +174,10 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ error: "Project not found" });
-    }
+    if (!project) return res.status(404).json({ error: "Project not found" });
 
     const isOwner = project.owner.toString() === userId;
-    const isCollaborator = project.collaborators.some(
-      id => id.toString() === userId
-    );
+    const isCollaborator = project.collaborators.some(id => id.toString() === userId);
 
     if (!isOwner && !isCollaborator) {
       return res.status(403).json({ error: "Access denied" });
@@ -202,9 +198,24 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       }
     });
 
+    // === Collaborators ===
+    if (Array.isArray(req.body.collaborators)) {
+      // Evitar duplicados y owner incluido
+      const newCollaborators = req.body.collaborators
+        .filter(id => id !== project.owner.toString())
+        .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+      // Validar que todos los IDs existan
+      const usersCount = await User.countDocuments({ _id: { $in: newCollaborators } });
+      if (usersCount !== newCollaborators.length) {
+        return res.status(400).json({ error: "Invalid collaborator detected" });
+      }
+
+      project.collaborators = newCollaborators;
+    }
+
     await project.save();
     res.json(project);
-
   } catch (err) {
     console.error("Update project error:", err);
     res.status(500).json({ error: "Failed to update project" });
