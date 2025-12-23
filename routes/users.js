@@ -194,4 +194,81 @@ router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, re
   }
 });
 
+// ─────────────────────────────
+// Update project (with collaborators update)
+// ─────────────────────────────
+router.patch("/:projectId", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const userId = req.user.id;
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const isOwner = project.owner.toString() === userId;
+    const isCollaborator = project.collaborators.some(id => id.toString() === userId);
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const allowedFields = [
+      "name",
+      "icon",
+      "visibility",
+      "subject",
+      "deadline",
+      "priority",
+    ];
+
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        project[field] = req.body[field];
+      }
+    });
+
+    // === Collaborators ===
+    if (Array.isArray(req.body.collaborators)) {
+      const oldCollaborators = project.collaborators.map(id => id.toString());
+
+      // Evitar duplicados y owner incluido
+      const newCollaborators = req.body.collaborators
+        .filter(id => id !== project.owner.toString())
+        .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+      // Validar que todos los IDs existan
+      const usersCount = await User.countDocuments({ _id: { $in: newCollaborators } });
+      if (usersCount !== newCollaborators.length) {
+        return res.status(400).json({ error: "Invalid collaborator detected" });
+      }
+
+      project.collaborators = newCollaborators;
+
+      // === Actualizar cada usuario agregado ===
+      const added = newCollaborators.filter(id => !oldCollaborators.includes(id));
+      if (added.length > 0) {
+        await User.updateMany(
+          { _id: { $in: added } },
+          { $addToSet: { projects: project._id } } // $addToSet evita duplicados
+        );
+      }
+
+      // === Opcional: remover proyecto de usuarios eliminados ===
+      const removed = oldCollaborators.filter(id => !newCollaborators.includes(id));
+      if (removed.length > 0) {
+        await User.updateMany(
+          { _id: { $in: removed } },
+          { $pull: { projects: project._id } }
+        );
+      }
+    }
+
+    await project.save();
+    res.json(project);
+  } catch (err) {
+    console.error("Update project error:", err);
+    res.status(500).json({ error: "Failed to update project" });
+  }
+});
+
 export default router;
