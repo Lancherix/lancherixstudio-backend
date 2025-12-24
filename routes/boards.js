@@ -84,7 +84,7 @@ router.delete("/image/:imageId", authMiddleware, async (req, res) => {
 
     const board = await Board.findOne({ "images._id": imageId });
     if (!board) {
-      return res.status(404).json({ error: "Board not found" });
+      return res.status(404).json({ error: "Image not found" });
     }
 
     const project = await Project.findById(board.project);
@@ -100,19 +100,23 @@ router.delete("/image/:imageId", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const image = board.images.id(imageId);
+    const image = board.images.find(img => img._id.toString() === imageId);
     if (!image) {
       return res.status(404).json({ error: "Image not found" });
     }
 
-    // 🔥 Cloudinary
-    await cloudinary.uploader.destroy(image.public_id, {
-      resource_type: "image",
-    });
+    // 🔥 Igual que profile picture
+    try {
+      await cloudinary.uploader.destroy(image.public_id);
+    } catch (cloudErr) {
+      console.error("Cloudinary delete failed:", cloudErr);
+    }
 
-    // 🔥 Mongo
-    image.remove();
-    await board.save();
+    // ✅ Forma segura
+    await Board.updateOne(
+      { _id: board._id },
+      { $pull: { images: { _id: imageId } } }
+    );
 
     res.json({ success: true });
   } catch (err) {
