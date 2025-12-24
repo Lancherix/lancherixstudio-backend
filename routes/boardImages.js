@@ -1,120 +1,78 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import "./Styles/BoardTab.css";
+import express from "express";
+import multer from "multer";
+import BoardImage from "../models/BoardImage.js";
 
-export default function BoardTab() {
-    const { projectId } = useParams(); // MUST exist in route
-    const [images, setImages] = useState([]);
-    const [loading, setLoading] = useState(true);
+const router = express.Router();
 
-    /* ─────────────────────────────
-       Load board images
-    ───────────────────────────── */
-    useEffect(() => {
-        if (!projectId) return;
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
-        fetch(`/api/projects/${projectId}/board-images`, {
-            credentials: "include",
-        })
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to fetch images");
-                return res.json();
-            })
-            .then(data => {
-                setImages(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    }, [projectId]);
+/* ─────────────────────────────
+   GET board images
+───────────────────────────── */
+router.get("/projects/:projectId/board-images", async (req, res) => {
+  try {
+    const images = await BoardImage.find({
+      project: req.params.projectId,
+    }).sort({ position: 1, createdAt: 1 });
 
-    /* ─────────────────────────────
-       Drag & drop upload
-    ───────────────────────────── */
-    const handleDrop = async (e) => {
-        e.preventDefault();
-        if (!projectId) return;
+    res.json(images);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch board images" });
+  }
+});
 
-        const files = Array.from(e.dataTransfer.files).filter(file =>
-            file.type.startsWith("image/")
-        );
+/* ─────────────────────────────
+   POST upload images
+───────────────────────────── */
+router.post(
+  "/projects/:projectId/board-images",
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      if (!req.files?.length) {
+        return res.status(400).json({ error: "No images uploaded" });
+      }
 
-        if (files.length === 0) return;
+      // TEMP: replace later with real auth middleware
+      const userId = req.user?._id || "000000000000000000000000";
 
-        const formData = new FormData();
-        files.forEach(file => formData.append("images", file)); // MUST be "images"
+      const savedImages = [];
 
-        const res = await fetch(
-            `/api/projects/${projectId}/board-images`,
-            {
-                method: "POST",
-                body: formData,
-                credentials: "include",
-            }
-        );
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
 
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("Upload failed:", text);
-            return;
-        }
-
-        const uploadedImages = await res.json(); // ARRAY
-        setImages(prev => [...prev, ...uploadedImages]);
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-    };
-
-    /* ─────────────────────────────
-       Delete image
-    ───────────────────────────── */
-    const deleteImage = async (imageId) => {
-        await fetch(`/api/board-images/${imageId}`, {
-            method: "DELETE",
-            credentials: "include",
+        const image = await BoardImage.create({
+          project: req.params.projectId,
+          url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+          public_id: `local-${Date.now()}-${i}`,
+          uploadedBy: userId,
+          position: Date.now(),
         });
 
-        setImages(prev => prev.filter(img => img._id !== imageId));
-    };
+        savedImages.push(image);
+      }
 
-    /* ─────────────────────────────
-       Render
-    ───────────────────────────── */
-    return (
-        <div
-            className="board-total"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-        >
-            {loading && <p className="board-loading">Loading board…</p>}
+      res.status(201).json(savedImages);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Image upload failed" });
+    }
+  }
+);
 
-            <div className="board-tab">
-                {images.map(img => (
-                    <div key={img._id} className="board-image-wrapper">
-                        <img
-                            src={img.url}
-                            alt="board"
-                            className="board-image"
-                            draggable={false}
-                        />
+/* ─────────────────────────────
+   DELETE image
+───────────────────────────── */
+router.delete("/board-images/:id", async (req, res) => {
+  try {
+    await BoardImage.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
 
-                        <button
-                            className="delete-image-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteImage(img._id);
-                            }}
-                            aria-label="Delete image"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
+export default router;
