@@ -80,11 +80,17 @@ router.post(
 router.delete("/image/:imageId", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
+    const { imageId } = req.params;
 
-    const board = await Board.findOne({ "images._id": req.params.imageId });
-    if (!board) return res.status(404).json({ error: "Image not found" });
+    const board = await Board.findOne({ "images._id": imageId });
+    if (!board) {
+      return res.status(404).json({ error: "Board not found" });
+    }
 
     const project = await Project.findById(board.project);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     const canAccess =
       project.owner.toString() === userId ||
@@ -94,10 +100,17 @@ router.delete("/image/:imageId", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const image = board.images.id(req.params.imageId);
+    const image = board.images.id(imageId);
+    if (!image) {
+      return res.status(404).json({ error: "Image not found" });
+    }
 
-    await cloudinary.uploader.destroy(image.public_id);
+    // 🔥 Cloudinary
+    await cloudinary.uploader.destroy(image.public_id, {
+      resource_type: "image",
+    });
 
+    // 🔥 Mongo
     image.remove();
     await board.save();
 
