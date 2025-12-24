@@ -1,131 +1,120 @@
-import express from "express";
-import BoardImage from "../models/BoardImage.js";
-import Project from "../models/Project.js";
-import authMiddleware from "../middleware/auth.js";
-import upload from "../middleware/upload.js";
-import cloudinary from "../config/cloudinary.js";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import "./Styles/BoardTab.css";
 
-const router = express.Router();
+export default function BoardTab() {
+    const { projectId } = useParams(); // MUST exist in route
+    const [images, setImages] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-/* ─────────────────────────────
-   Upload images to project board
-   POST /api/projects/:projectId/board-images
-   ───────────────────────────── */
-router.post(
-  "/projects/:projectId/board-images",
-  authMiddleware,
-  upload.array("images"),
-  async (req, res) => {
-    try {
-      const { projectId } = req.params;
-      const userId = req.user.id;
+    /* ─────────────────────────────
+       Load board images
+    ───────────────────────────── */
+    useEffect(() => {
+        if (!projectId) return;
 
-      const project = await Project.findById(projectId);
-      if (!project) return res.status(404).json({ error: "Project not found" });
+        fetch(`/api/projects/${projectId}/board-images`, {
+            credentials: "include",
+        })
+            .then(res => {
+                if (!res.ok) throw new Error("Failed to fetch images");
+                return res.json();
+            })
+            .then(data => {
+                setImages(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
+    }, [projectId]);
 
-      const isAllowed =
-        project.owner.toString() === userId ||
-        project.collaborators.some(id => id.toString() === userId);
+    /* ─────────────────────────────
+       Drag & drop upload
+    ───────────────────────────── */
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        if (!projectId) return;
 
-      if (!isAllowed) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+        const files = Array.from(e.dataTransfer.files).filter(file =>
+            file.type.startsWith("image/")
+        );
 
-      const uploadedImages = [];
+        if (files.length === 0) return;
 
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: `project_boards/${projectId}`,
+        const formData = new FormData();
+        files.forEach(file => formData.append("images", file)); // MUST be "images"
+
+        const res = await fetch(
+            `/api/projects/${projectId}/board-images`,
+            {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+            }
+        );
+
+        if (!res.ok) {
+            const text = await res.text();
+            console.error("Upload failed:", text);
+            return;
+        }
+
+        const uploadedImages = await res.json(); // ARRAY
+        setImages(prev => [...prev, ...uploadedImages]);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    /* ─────────────────────────────
+       Delete image
+    ───────────────────────────── */
+    const deleteImage = async (imageId) => {
+        await fetch(`/api/board-images/${imageId}`, {
+            method: "DELETE",
+            credentials: "include",
         });
 
-        const image = await BoardImage.create({
-          project: projectId,
-          url: result.secure_url,
-          public_id: result.public_id,
-          uploadedBy: userId,
-          position: Date.now(),
-        });
+        setImages(prev => prev.filter(img => img._id !== imageId));
+    };
 
-        uploadedImages.push(image);
-      }
+    /* ─────────────────────────────
+       Render
+    ───────────────────────────── */
+    return (
+        <div
+            className="board-total"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+        >
+            {loading && <p className="board-loading">Loading board…</p>}
 
-      res.status(201).json(uploadedImages);
-    } catch (err) {
-      console.error("Board image upload error:", err);
-      res.status(500).json({ error: "Failed to upload images" });
-    }
-  }
-);
+            <div className="board-tab">
+                {images.map(img => (
+                    <div key={img._id} className="board-image-wrapper">
+                        <img
+                            src={img.url}
+                            alt="board"
+                            className="board-image"
+                            draggable={false}
+                        />
 
-/* ─────────────────────────────
-   Get project board images
-   GET /api/projects/:projectId/board-images
-   ───────────────────────────── */
-router.get(
-  "/projects/:projectId/board-images",
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const { projectId } = req.params;
-      const userId = req.user.id;
-
-      const project = await Project.findById(projectId);
-      if (!project) return res.status(404).json({ error: "Project not found" });
-
-      const isAllowed =
-        project.visibility === "public" ||
-        project.owner.toString() === userId ||
-        project.collaborators.some(id => id.toString() === userId);
-
-      if (!isAllowed) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      const images = await BoardImage.find({ project: projectId })
-        .sort({ position: 1 });
-
-      res.json(images);
-    } catch (err) {
-      console.error("Fetch board images error:", err);
-      res.status(500).json({ error: "Failed to fetch images" });
-    }
-  }
-);
-
-/* ─────────────────────────────
-   Delete board image
-   DELETE /api/board-images/:imageId
-   ───────────────────────────── */
-router.delete(
-  "/board-images/:imageId",
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const { imageId } = req.params;
-      const userId = req.user.id;
-
-      const image = await BoardImage.findById(imageId);
-      if (!image) return res.status(404).json({ error: "Image not found" });
-
-      const project = await Project.findById(image.project);
-
-      const isAllowed =
-        project.owner.toString() === userId ||
-        project.collaborators.some(id => id.toString() === userId);
-
-      if (!isAllowed) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      await cloudinary.uploader.destroy(image.public_id);
-      await image.deleteOne();
-
-      res.json({ message: "Image deleted" });
-    } catch (err) {
-      console.error("Delete board image error:", err);
-      res.status(500).json({ error: "Failed to delete image" });
-    }
-  }
-);
-
-export default router;
+                        <button
+                            className="delete-image-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteImage(img._id);
+                            }}
+                            aria-label="Delete image"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
