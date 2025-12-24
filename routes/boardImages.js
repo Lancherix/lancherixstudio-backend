@@ -34,19 +34,19 @@ router.post(
 
       const projectId = req.params.projectId;
 
-      // TEMP user id (replace later with auth)
+      // TEMP user id
       const userId = "000000000000000000000000";
 
-      const savedImages = req.files.map(file => ({
+      const docs = req.files.map((file, index) => ({
         project: projectId,
-        url: file.path,        // Cloudinary URL
+        url: file.path,          // Cloudinary URL
         public_id: file.filename,
         uploadedBy: userId,
-        position: Date.now(),
+        position: Date.now() + index,
       }));
 
-      const images = await BoardImage.insertMany(savedImages);
-      res.status(201).json(images);
+      const savedImages = await BoardImage.insertMany(docs);
+      res.status(201).json(savedImages);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Image upload failed" });
