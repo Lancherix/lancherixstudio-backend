@@ -15,7 +15,7 @@ router.get("/projects/:projectId/board-images", async (req, res) => {
 
     res.json(images);
   } catch (err) {
-    console.error(err);
+    console.error("GET board images error:", err);
     res.status(500).json({ error: "Failed to fetch board images" });
   }
 });
@@ -34,21 +34,22 @@ router.post(
 
       const projectId = req.params.projectId;
 
-      // TEMP user id
+      // TEMP user (replace with auth later)
       const userId = "000000000000000000000000";
 
-      const docs = req.files.map((file, index) => ({
-        project: projectId,
-        url: file.path,          // Cloudinary URL
-        public_id: file.filename,
-        uploadedBy: userId,
-        position: Date.now() + index,
-      }));
+      const images = await BoardImage.insertMany(
+        req.files.map(file => ({
+          project: projectId,
+          url: file.path,            // ✅ Cloudinary URL
+          public_id: file.public_id, // ✅ REQUIRED
+          uploadedBy: userId,
+          position: Date.now(),
+        }))
+      );
 
-      const savedImages = await BoardImage.insertMany(docs);
-      res.status(201).json(savedImages);
+      res.status(201).json(images);
     } catch (err) {
-      console.error(err);
+      console.error("UPLOAD error:", err);
       res.status(500).json({ error: "Image upload failed" });
     }
   }
@@ -62,7 +63,7 @@ router.delete("/board-images/:id", async (req, res) => {
     await BoardImage.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("DELETE error:", err);
     res.status(500).json({ error: "Delete failed" });
   }
 });
