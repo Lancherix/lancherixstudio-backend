@@ -4,10 +4,19 @@ import cloudinary from "../config/cloudinary.js";
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "profile_pictures",
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
-  },
+  params: async (req, file) => {
+    if (req.originalUrl.includes("/board-images")) {
+      return {
+        folder: `board/${req.params.projectId}`,
+        allowed_formats: ["jpg", "png", "jpeg", "webp"],
+      };
+    }
+
+    return {
+      folder: "profile_pictures",
+      allowed_formats: ["jpg", "png", "jpeg", "webp"],
+    };
+  }
 });
 
 const upload = multer({ storage });

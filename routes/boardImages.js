@@ -1,30 +1,38 @@
 import express from "express";
 import BoardImage from "../models/BoardImage.js";
 import upload from "../middleware/upload.js";
+import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
 /* ─────────────────────────────
    GET board images
+   GET /api/projects/:projectId/board-images
 ───────────────────────────── */
-router.get("/projects/:projectId/board-images", async (req, res) => {
-  try {
-    const images = await BoardImage.find({
-      project: req.params.projectId,
-    }).sort({ position: 1, createdAt: 1 });
+router.get(
+  "/projects/:projectId/board-images",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const images = await BoardImage.find({
+        project: req.params.projectId,
+      }).sort({ position: 1, createdAt: 1 });
 
-    res.json(images);
-  } catch (err) {
-    console.error("GET board images error:", err);
-    res.status(500).json({ error: "Failed to fetch board images" });
+      res.json(images);
+    } catch (err) {
+      console.error("Fetch board images error:", err);
+      res.status(500).json({ error: "Failed to fetch board images" });
+    }
   }
-});
+);
 
 /* ─────────────────────────────
-   POST upload images (Cloudinary)
+   POST upload board images
+   POST /api/projects/:projectId/board-images
 ───────────────────────────── */
 router.post(
   "/projects/:projectId/board-images",
+  authMiddleware,
   upload.array("images"),
   async (req, res) => {
     try {
@@ -33,39 +41,49 @@ router.post(
       }
 
       const projectId = req.params.projectId;
+      const userId = req.user.id;
 
-      // TEMP user (replace with auth later)
-      const userId = "000000000000000000000000";
+      const imagesToSave = req.files.map(file => ({
+        project: projectId,
 
-      const images = await BoardImage.insertMany(
-        req.files.map(file => ({
-          project: projectId,
-          url: file.path,            // ✅ Cloudinary URL
-          public_id: file.public_id, // ✅ REQUIRED
-          uploadedBy: userId,
-          position: Date.now(),
-        }))
-      );
+        // multer-storage-cloudinary already uploaded it
+        url: file.path,              // secure_url
+        public_id: file.public_id,   // IMPORTANT
 
-      res.status(201).json(images);
+        uploadedBy: userId,
+        position: Date.now(),
+      }));
+
+      const savedImages = await BoardImage.insertMany(imagesToSave);
+      res.status(201).json(savedImages);
     } catch (err) {
-      console.error("UPLOAD error:", err);
+      console.error("Board image upload error:", err);
       res.status(500).json({ error: "Image upload failed" });
     }
   }
 );
 
 /* ─────────────────────────────
-   DELETE image
+   DELETE board image
+   DELETE /api/board-images/:imageId
 ───────────────────────────── */
-router.delete("/board-images/:id", async (req, res) => {
-  try {
-    await BoardImage.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("DELETE error:", err);
-    res.status(500).json({ error: "Delete failed" });
+router.delete(
+  "/board-images/:imageId",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const image = await BoardImage.findById(req.params.imageId);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      await image.deleteOne();
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Delete board image error:", err);
+      res.status(500).json({ error: "Delete failed" });
+    }
   }
-});
+);
 
 export default router;
