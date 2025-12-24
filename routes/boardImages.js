@@ -1,77 +1,37 @@
-/*import express from "express";
-import BoardImage from "../models/BoardImage.js";
-import upload from "../middleware/upload.js";
-import authMiddleware from "../middleware/auth.js";
+// models/BoardImage.js
+import mongoose from "mongoose";
 
-const router = express.Router();
+const BoardImageSchema = new mongoose.Schema(
+  {
+    project: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
+      index: true,
+    },
 
-router.get(
-  "/projects/:projectId/board-images",
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const images = await BoardImage.find({
-        project: req.params.projectId,
-      }).sort({ position: 1, createdAt: 1 });
+    url: {
+      type: String,
+      required: true,
+    },
 
-      res.json(images);
-    } catch (err) {
-      console.error("Fetch board images error:", err);
-      res.status(500).json({ error: "Failed to fetch board images" });
-    }
-  }
+    public_id: {
+      type: String,
+      required: true,
+    },
+
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    position: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true }
 );
 
-router.post(
-  "/projects/:projectId/board-images",
-  authMiddleware,
-  upload.array("images"),
-  async (req, res) => {
-    try {
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ error: "No images uploaded" });
-      }
-
-      const projectId = req.params.projectId;
-      const userId = req.user.id;
-
-      const imagesToSave = req.files.map(file => ({
-        project: projectId,
-
-        // multer-storage-cloudinary already uploaded it
-        url: file.path,              // secure_url
-        public_id: file.public_id,   // IMPORTANT
-
-        uploadedBy: userId,
-        position: Date.now(),
-      }));
-
-      const savedImages = await BoardImage.insertMany(imagesToSave);
-      res.status(201).json(savedImages);
-    } catch (err) {
-      console.error("Board image upload error:", err);
-      res.status(500).json({ error: "Image upload failed" });
-    }
-  }
-);
-
-router.delete(
-  "/board-images/:imageId",
-  authMiddleware,
-  async (req, res) => {
-    try {
-      const image = await BoardImage.findById(req.params.imageId);
-      if (!image) {
-        return res.status(404).json({ error: "Image not found" });
-      }
-
-      await image.deleteOne();
-      res.json({ success: true });
-    } catch (err) {
-      console.error("Delete board image error:", err);
-      res.status(500).json({ error: "Delete failed" });
-    }
-  }
-);
-
-export default router;*/
+export default mongoose.model("BoardImage", BoardImageSchema);
