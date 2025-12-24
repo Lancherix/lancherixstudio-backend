@@ -5,6 +5,7 @@ import Project from "../models/Project.js";
 import authMiddleware from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
+import streamifier from "streamifier";
 
 const router = express.Router();
 
@@ -61,25 +62,30 @@ router.post(
       }
 
       const project = await Project.findById(projectId);
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
+      if (!project) return res.status(404).json({ error: "Project not found" });
 
       const isOwner = project.owner.toString() === userId;
-      const isCollaborator = project.collaborators.some(
-        id => id.toString() === userId
-      );
-
-      if (!isOwner && !isCollaborator) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      const isCollaborator = project.collaborators.some(id => id.toString() === userId);
+      if (!isOwner && !isCollaborator) return res.status(403).json({ error: "Access denied" });
 
       const savedImages = [];
 
+      // ───── Aquí reemplazas el bucle antiguo ─────
       for (const file of req.files) {
-        const uploadResult = await cloudinary.uploader.upload(file.path, {
-          folder: "boards",
-        });
+        const streamUpload = (fileBuffer) => {
+          return new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "boards" },
+              (error, result) => {
+                if (result) resolve(result);
+                else reject(error);
+              }
+            );
+            streamifier.createReadStream(fileBuffer).pipe(stream);
+          });
+        };
+
+        const uploadResult = await streamUpload(file.buffer);
 
         const image = await BoardImage.create({
           project: projectId,
@@ -93,6 +99,7 @@ router.post(
       }
 
       res.status(201).json(savedImages);
+
     } catch (err) {
       console.error("Upload board image error:", err);
       res.status(500).json({ error: "Image upload failed" });
