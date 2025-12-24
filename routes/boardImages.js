@@ -1,13 +1,8 @@
 import express from "express";
-import multer from "multer";
 import BoardImage from "../models/BoardImage.js";
+import upload from "../middleware/upload.js";
 
 const router = express.Router();
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
 
 /* ─────────────────────────────
    GET board images
@@ -20,42 +15,38 @@ router.get("/projects/:projectId/board-images", async (req, res) => {
 
     res.json(images);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch board images" });
   }
 });
 
 /* ─────────────────────────────
-   POST upload images
+   POST upload images (Cloudinary)
 ───────────────────────────── */
 router.post(
   "/projects/:projectId/board-images",
   upload.array("images"),
   async (req, res) => {
     try {
-      if (!req.files?.length) {
+      if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: "No images uploaded" });
       }
 
-      // TEMP: replace later with real auth middleware
-      const userId = req.user?._id || "000000000000000000000000";
+      const projectId = req.params.projectId;
 
-      const savedImages = [];
+      // TEMP user id (replace later with auth)
+      const userId = "000000000000000000000000";
 
-      for (let i = 0; i < req.files.length; i++) {
-        const file = req.files[i];
+      const savedImages = req.files.map(file => ({
+        project: projectId,
+        url: file.path,        // Cloudinary URL
+        public_id: file.filename,
+        uploadedBy: userId,
+        position: Date.now(),
+      }));
 
-        const image = await BoardImage.create({
-          project: req.params.projectId,
-          url: `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
-          public_id: `local-${Date.now()}-${i}`,
-          uploadedBy: userId,
-          position: Date.now(),
-        });
-
-        savedImages.push(image);
-      }
-
-      res.status(201).json(savedImages);
+      const images = await BoardImage.insertMany(savedImages);
+      res.status(201).json(images);
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Image upload failed" });
@@ -71,6 +62,7 @@ router.delete("/board-images/:id", async (req, res) => {
     await BoardImage.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Delete failed" });
   }
 });
