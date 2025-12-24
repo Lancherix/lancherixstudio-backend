@@ -13,7 +13,7 @@ const UserSchema = new mongoose.Schema({
 
   // Ahora profilePicture es un objeto
   profilePicture: {
-    url: { type: String, default: "https://tse1.mm.bing.net/th?q=profile%20pic%20blank&w=250&h=250&c=7" },
+    url: { type: String, default: "https://studio.lancherix.com/Images/defaultProfilePicture.png" },
     public_id: { type: String, default: "" }
   },
 
