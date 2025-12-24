@@ -1,4 +1,4 @@
-// models/BoardImage.js
+/* models/BoardImage.js
 import mongoose from "mongoose";
 
 const BoardImageSchema = new mongoose.Schema(
@@ -34,4 +34,4 @@ const BoardImageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("BoardImage", BoardImageSchema);
+export default mongoose.model("BoardImage", BoardImageSchema); */

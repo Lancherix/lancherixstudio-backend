@@ -1,14 +1,10 @@
-import express from "express";
+/*import express from "express";
 import BoardImage from "../models/BoardImage.js";
 import upload from "../middleware/upload.js";
 import authMiddleware from "../middleware/auth.js";
 
 const router = express.Router();
 
-/* ─────────────────────────────
-   GET board images
-   GET /api/projects/:projectId/board-images
-───────────────────────────── */
 router.get(
   "/projects/:projectId/board-images",
   authMiddleware,
@@ -26,10 +22,6 @@ router.get(
   }
 );
 
-/* ─────────────────────────────
-   POST upload board images
-   POST /api/projects/:projectId/board-images
-───────────────────────────── */
 router.post(
   "/projects/:projectId/board-images",
   authMiddleware,
@@ -63,10 +55,6 @@ router.post(
   }
 );
 
-/* ─────────────────────────────
-   DELETE board image
-   DELETE /api/board-images/:imageId
-───────────────────────────── */
 router.delete(
   "/board-images/:imageId",
   authMiddleware,
@@ -86,4 +74,4 @@ router.delete(
   }
 );
 
-export default router;
+export default router;*/
