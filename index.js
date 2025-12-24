@@ -7,7 +7,7 @@ import userRoutes from "./routes/users.js";
 import projectsRoutes from "./routes/projects.js";
 import tasksRoutes from "./routes/tasks.js";
 import notesRoutes from "./routes/notes.js";
-import boardImagesRoutes from "./routes/boardImages.js";
+import boardRoutes from "./routes/boards.js";
 
 dotenv.config();
 
@@ -23,7 +23,7 @@ app.use("/api", userRoutes);
 app.use("/api/projects", projectsRoutes);
 app.use("/api/tasks", tasksRoutes);
 app.use("/api/notes", notesRoutes);
-app.use("/api", boardImagesRoutes);
+app.use("/api/boards", boardRoutes);
 
 // Test route
 app.get("/", (req, res) => {
