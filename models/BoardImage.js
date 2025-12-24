@@ -6,6 +6,7 @@ import authMiddleware from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
+import uploadMemory from "../middleware/uploadMemory.js";
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ router.get(
 router.post(
   "/projects/:projectId/board-images",
   authMiddleware,
-  upload.array("images"),
+  uploadMemory.array("images"),
   async (req, res) => {
     try {
       const { projectId } = req.params;
