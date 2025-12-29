@@ -13,18 +13,23 @@ router.get("/project/:projectId", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const project = await Project.findById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
 
-    const canAccess =
-      project.owner.toString() === userId ||
-      project.collaborators.some(id => id.toString() === userId);
+    // 🔓 PUBLIC PROJECT → ANY USER CAN READ
+    if (!project.isPublic) {
+      // 🔒 PRIVATE PROJECT → MUST BE MEMBER
+      const isMember =
+        project.owner.toString() === userId ||
+        project.collaborators.some(id => id.toString() === userId);
 
-    if (!canAccess) {
-      return res.status(403).json({ error: "Access denied" });
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
 
     let board = await Board.findOne({ project: projectId });
-
     if (!board) {
       board = await Board.create({ project: projectId, images: [] });
     }
