@@ -2,6 +2,7 @@ import express from "express";
 import Project from "../models/Project.js";
 import User from "../models/User.js";
 import authMiddleware from "../middleware/auth.js";
+import { cleanupOrphanProjects } from "../utils/cleanupOrphanProjects.js";
 
 const router = express.Router();
 
@@ -322,6 +323,7 @@ router.post("/:projectId/leave", authMiddleware, async (req, res) => {
 
     // ─── CASE 3: Owner leaves and no members left ───
     await Project.findByIdAndDelete(project._id);
+    await cleanupOrphanProjects();
 
     return res.json({
       message: "Project deleted because no members remained",
