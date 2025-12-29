@@ -97,6 +97,32 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 /* ─────────────────────────────
+   Search public projects
+   ───────────────────────────── */
+router.get("/search", async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim() === "") {
+      return res.json([]);
+    }
+
+    const projects = await Project.find({
+      visibility: "public",
+      name: { $regex: query, $options: "i" }
+    })
+      .limit(10)
+      .populate("owner", "username")
+      .select("name icon slug subject owner");
+
+    res.json(projects);
+  } catch (err) {
+    console.error("Project search error:", err);
+    res.status(500).json({ error: "Failed to search projects" });
+  }
+});
+
+/* ─────────────────────────────
    Get single project by slug
    ───────────────────────────── */
 router.get("/:slug", authMiddleware, async (req, res) => {
@@ -339,32 +365,6 @@ router.post("/:projectId/remove-member", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Remove member error:", err);
     res.status(500).json({ error: "Failed to remove member" });
-  }
-});
-
-/* ─────────────────────────────
-   Search public projects
-   ───────────────────────────── */
-router.get("/search", async (req, res) => {
-  try {
-    const { query } = req.query;
-
-    if (!query || query.trim() === "") {
-      return res.json([]);
-    }
-
-    const projects = await Project.find({
-      visibility: "public",
-      name: { $regex: query, $options: "i" }
-    })
-      .limit(10)
-      .populate("owner", "username")
-      .select("name icon slug subject owner");
-
-    res.json(projects);
-  } catch (err) {
-    console.error("Project search error:", err);
-    res.status(500).json({ error: "Failed to search projects" });
   }
 });
 
