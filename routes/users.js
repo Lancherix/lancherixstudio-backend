@@ -272,4 +272,32 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
   }
 });
 
+// GET public projects by username (owner OR collaborator)
+router.get("/users/:username/public-projects", async (req, res) => {
+  try {
+    const { username } = req.params;
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const publicProjects = await Project.find({
+      visibility: "public",
+      $or: [
+        { owner: user._id },
+        { collaborators: user._id }
+      ]
+    })
+      .sort({ updatedAt: -1 })
+      .select("name icon slug subject updatedAt owner collaborators")
+      .populate("owner", "username fullName");
+
+    res.json(publicProjects);
+  } catch (error) {
+    console.error("Fetch public projects error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 export default router;
