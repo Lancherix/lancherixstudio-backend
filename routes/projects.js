@@ -342,4 +342,30 @@ router.post("/:projectId/remove-member", authMiddleware, async (req, res) => {
   }
 });
 
+/* ─────────────────────────────
+   Search public projects
+   ───────────────────────────── */
+router.get("/search", async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim() === "") {
+      return res.json([]);
+    }
+
+    const projects = await Project.find({
+      visibility: "public",
+      name: { $regex: query, $options: "i" }
+    })
+      .limit(10)
+      .populate("owner", "username")
+      .select("name icon slug subject owner");
+
+    res.json(projects);
+  } catch (err) {
+    console.error("Project search error:", err);
+    res.status(500).json({ error: "Failed to search projects" });
+  }
+});
+
 export default router;
