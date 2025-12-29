@@ -112,7 +112,7 @@ router.get("/search", async (req, res) => {
       name: { $regex: query, $options: "i" }
     })
       .limit(10)
-      .populate("owner", "username")
+      .populate("owner", "username", "fullName")
       .select("name icon slug subject owner");
 
     res.json(projects);
