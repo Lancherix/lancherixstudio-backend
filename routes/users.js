@@ -2,6 +2,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import Project from "../models/Project.js";
 import upload from "../middleware/upload.js";
 import authMiddleware from "../middleware/auth.js";
 import cloudinary from "../config/cloudinary.js";
