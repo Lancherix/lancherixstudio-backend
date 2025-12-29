@@ -11,16 +11,18 @@ const router = express.Router();
 router.get("/project/:projectId", optionalAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // 🔓 PUBLIC PROJECT → ANY USER CAN READ
     if (!project.isPublic) {
-      // 🔒 PRIVATE PROJECT → MUST BE MEMBER
+      if (!userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       const isMember =
         project.owner.toString() === userId ||
         project.collaborators.some(id => id.toString() === userId);
