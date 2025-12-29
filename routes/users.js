@@ -7,6 +7,7 @@ import upload from "../middleware/upload.js";
 import authMiddleware from "../middleware/auth.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
+import { cleanupUnusedWallpapers } from "../utils/cleanupUnusedWallpapers.js";
 import streamifier from "streamifier";
 
 const router = express.Router();
@@ -184,6 +185,7 @@ router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, re
 
     await user.save();
     cleanupUnusedProfilePictures();
+    cleanupUnusedWallpapers();
 
     res.json({
       url: uploadResult.secure_url,
