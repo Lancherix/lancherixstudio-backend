@@ -13,12 +13,17 @@ router.get("/project/:projectId", optionalAuth, async (req, res) => {
     const { projectId } = req.params;
     const userId = req.user?.id;
 
+    // 1️⃣ Find project
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    if (!project.isPublic) {
+    // 2️⃣ Visibility check (FIXED)
+    const isPublic = project.visibility === "public";
+
+    if (!isPublic) {
+      // 🔒 Private project
       if (!userId) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -32,11 +37,16 @@ router.get("/project/:projectId", optionalAuth, async (req, res) => {
       }
     }
 
+    // 3️⃣ Load or create board
     let board = await Board.findOne({ project: projectId });
     if (!board) {
-      board = await Board.create({ project: projectId, images: [] });
+      board = await Board.create({
+        project: projectId,
+        images: [],
+      });
     }
 
+    // 4️⃣ Respond
     res.json(board);
   } catch (err) {
     console.error("Get board error:", err);
