@@ -2,12 +2,13 @@ import express from "express";
 import Board from "../models/Board.js";
 import Project from "../models/Project.js";
 import authMiddleware from "../middleware/auth.js";
+import optionalAuth from "../middleware/optionalAuth.js";
 import boardUpload from "../middleware/boardUpload.js";
 import cloudinary from "../config/cloudinary.js";
 
 const router = express.Router();
 
-router.get("/project/:projectId", authMiddleware, async (req, res) => {
+router.get("/project/:projectId", optionalAuth, async (req, res) => {
   try {
     const { projectId } = req.params;
     const userId = req.user.id;
