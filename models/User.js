@@ -3,15 +3,22 @@ import mongoose from "mongoose";
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  fullName: { type: String, required: true },
-  month: String,
-  date: String,
-  year: String,
-  gender: String,
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  dateOfBirth: { type: Date, required: true },
+  gender: { type: String },
+  country: { type: String },
+  phoneNumber: { type: String },
+  marketingOptIn: { type: Boolean, default: false },
 
   passwordHash: { type: String, required: true },
 
-  // Ahora profilePicture es un objeto
+  isConfirmed: { type: Boolean, default: false },
+  confirmToken: { type: String },
+
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
+
   profilePicture: {
     url: { type: String, default: "https://studio.lancherix.com/Images/defaultProfilePicture.png" },
     public_id: { type: String, default: "" }
@@ -23,12 +30,8 @@ const UserSchema = new mongoose.Schema({
   },
   sideMenuColor: { type: String, default: "rgba(255, 255, 255, 1)" },
   themeMode: { type: String, default: "light" },
-  projects: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Project",
-    }
-  ],
-});
+
+  projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
+}, { timestamps: true });
 
 export default mongoose.model("User", UserSchema);
