@@ -69,8 +69,7 @@ router.post("/register", async (req, res) => {
       language,
       themeMode,
       agreements,
-      passwordHash,
-      themeMode
+      passwordHash
     });
 
     await newUser.save();
