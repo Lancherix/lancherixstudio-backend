@@ -2,69 +2,140 @@ import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema(
   {
-    username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
+    // ───────────────
+    // Identity
+    // ───────────────
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true
+    },
 
-    // Name split (better than fullName)
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
+    // Name split
+    firstName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    lastName: {
+      type: String,
+      required: true,
+      trim: true
+    },
 
-    // Birth date (keeping your original approach)
+    // ───────────────
+    // Birth info
+    // ───────────────
     month: String,
     date: String,
     year: String,
+    gender: {
+      type: String,
+      enum: ["male", "female", "preferNotToSay"],
+      default: "preferNotToSay"
+    },
 
-    gender: String,
-
+    // ───────────────
     // Localization
-    country: { type: String, default: "CO" },        // ISO code recommended
-    language: { type: String, default: "es-CO" },
+    // ───────────────
+    country: {
+      type: String,
+      default: "CO",
+      uppercase: true
+    },
+    language: {
+      type: String,
+      default: "es-CO"
+    },
 
+    // ───────────────
     // Auth
-    passwordHash: { type: String, required: true },
+    // ───────────────
+    passwordHash: {
+      type: String,
+      required: true,
+      select: false // ⬅️ important security improvement
+    },
 
+    // ───────────────
     // Account metadata
+    // ───────────────
     role: {
       type: String,
       enum: ["user", "admin", "moderator"],
       default: "user"
     },
-
     accountStatus: {
       type: String,
       enum: ["active", "suspended", "deleted"],
       default: "active"
     },
 
-    // Legal & privacy consents
+    // ───────────────
+    // Onboarding
+    // ───────────────
+    isOnboarded: {
+      type: Boolean,
+      default: false
+    },
+
+    // ───────────────
+    // Legal & privacy
+    // ───────────────
     agreements: {
       privacyPolicy: { type: Boolean, required: true },
       notifications: { type: Boolean, default: false },
       cookies: { type: Boolean, default: false }
     },
 
-    // Profile picture
+    // ───────────────
+    // Profile
+    // ───────────────
     profilePicture: {
       url: {
         type: String,
-        default: "https://studio.lancherix.com/Images/defaultProfilePicture.png"
+        default:
+          "https://studio.lancherix.com/Images/defaultProfilePicture.png"
       },
-      public_id: { type: String, default: "" }
+      public_id: {
+        type: String,
+        default: ""
+      }
     },
 
     // UI personalization
     wallpaper: {
-      url: { type: String, default: "/Images/backgroundImage.jpeg" },
-      public_id: { type: String, default: "" }
+      url: {
+        type: String,
+        default: "/Images/backgroundImage.jpeg"
+      },
+      public_id: {
+        type: String,
+        default: ""
+      }
     },
-    sideMenuColor: { type: String, default: "rgba(255, 255, 255, 1)" },
+    sideMenuColor: {
+      type: String,
+      default: "rgba(255, 255, 255, 1)"
+    },
     themeMode: {
       type: String,
-      enum: ["light", "dark", "system"],
+      enum: ["light", "dark", "glass"],
       default: "light"
     },
 
+    // ───────────────
     // Relations
+    // ───────────────
     projects: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -72,11 +143,15 @@ const UserSchema = new mongoose.Schema(
       }
     ],
 
-    // Activity tracking
-    lastLoginAt: { type: Date }
+    // ───────────────
+    // Activity
+    // ───────────────
+    lastLoginAt: {
+      type: Date
+    }
   },
   {
-    timestamps: true // creates createdAt & updatedAt automatically
+    timestamps: true
   }
 );
 
