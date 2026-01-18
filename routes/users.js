@@ -8,11 +8,12 @@ import authMiddleware from "../middleware/auth.js";
 import cloudinary from "../config/cloudinary.js";
 import { cleanupUnusedProfilePictures } from "../utils/cleanupProfilePictures.js";
 import { cleanupUnusedWallpapers } from "../utils/cleanupUnusedWallpapers.js";
-import streamifier from "streamifier";
 
 const router = express.Router();
 
-// Middleware to verify token
+// ─────────────────────────────
+// Token middleware
+// ─────────────────────────────
 const auth = (req, res, next) => {
   const header = req.headers.authorization;
   if (!header) return res.status(401).json({ message: "No token provided" });
@@ -26,36 +27,39 @@ const auth = (req, res, next) => {
   }
 };
 
+// ─────────────────────────────
 // UPDATE USER
+// ─────────────────────────────
 router.put("/users", auth, async (req, res) => {
   try {
     const {
       email,
-      fullName,
+      firstName,
+      lastName,
       month,
       date,
       year,
       gender,
+      country,
+      language,
       sideMenuColor,
-      themeMode,
-      profilePicture,
-      wallpaper
+      themeMode
     } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Actualizar solo campos enviados
     if (email) user.email = email;
-    if (fullName) user.fullName = fullName;
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
     if (month) user.month = month;
     if (date) user.date = date;
     if (year) user.year = year;
     if (gender) user.gender = gender;
+    if (country) user.country = country;
+    if (language) user.language = language;
     if (sideMenuColor) user.sideMenuColor = sideMenuColor;
     if (themeMode) user.themeMode = themeMode;
-    if (wallpaper) user.wallpaper = wallpaper;
-    if (profilePicture) user.profilePicture = profilePicture; // ⬅️ clave
 
     await user.save();
 
@@ -67,13 +71,17 @@ router.put("/users", auth, async (req, res) => {
   }
 });
 
+// ─────────────────────────────
 // GET user by username (public)
+// ─────────────────────────────
 router.get("/users", async (req, res) => {
   try {
     const { username } = req.query;
-    if (!username) return res.status(400).json({ message: "Username is required" });
+    if (!username) {
+      return res.status(400).json({ message: "Username is required" });
+    }
 
-    const user = await User.findOne({ username }).select("-passwordHash");
+    const user = await User.findOne({ username }).select("-passwordHash -__v");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json(user);
@@ -83,19 +91,21 @@ router.get("/users", async (req, res) => {
   }
 });
 
-// GET /api/users/search?query=...
+// ─────────────────────────────
+// SEARCH USERS
+// ─────────────────────────────
 router.get("/users/search", async (req, res) => {
   try {
     const { query } = req.query;
-    if (!query) return res.json([]); // empty query returns empty array
+    if (!query) return res.json([]);
 
-    // Case-insensitive search by username or fullName
     const users = await User.find({
       $or: [
         { username: { $regex: query, $options: "i" } },
-        { fullName: { $regex: query, $options: "i" } }
+        { firstName: { $regex: query, $options: "i" } },
+        { lastName: { $regex: query, $options: "i" } }
       ]
-    }).select("-passwordHash");
+    }).select("-passwordHash -__v");
 
     res.json(users);
   } catch (err) {
@@ -104,7 +114,9 @@ router.get("/users/search", async (req, res) => {
   }
 });
 
-// routes/users.js
+// ─────────────────────────────
+// UPLOAD PROFILE PICTURE
+// ─────────────────────────────
 router.post(
   "/users/profile-picture",
   auth,
@@ -142,7 +154,10 @@ router.post(
   }
 );
 
-router.delete('/users/profile-picture', auth, async (req, res) => {
+// ─────────────────────────────
+// DELETE PROFILE PICTURE
+// ─────────────────────────────
+router.delete("/users/profile-picture", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
@@ -153,14 +168,17 @@ router.delete('/users/profile-picture', auth, async (req, res) => {
     }
 
     cleanupUnusedProfilePictures();
-    res.json({ message: 'Profile picture removed' });
+    res.json({ message: "Profile picture removed" });
+
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Failed to remove profile picture' });
+    res.status(500).json({ message: "Failed to remove profile picture" });
   }
 });
 
-// Subir wallpaper
+// ─────────────────────────────
+// UPLOAD WALLPAPER
+// ─────────────────────────────
 router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, res) => {
   try {
     if (!req.file) {
@@ -187,10 +205,7 @@ router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, re
     cleanupUnusedProfilePictures();
     cleanupUnusedWallpapers();
 
-    res.json({
-      url: uploadResult.secure_url,
-      public_id: uploadResult.public_id,
-    });
+    res.json(user.wallpaper);
 
   } catch (error) {
     console.error("Wallpaper upload error:", error);
@@ -199,7 +214,7 @@ router.post("/users/wallpaper", auth, upload.single("wallpaper"), async (req, re
 });
 
 // ─────────────────────────────
-// Update project (with collaborators update)
+// UPDATE PROJECT (collaborators)
 // ─────────────────────────────
 router.patch("/:projectId", authMiddleware, async (req, res) => {
   try {
@@ -231,16 +246,13 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
       }
     });
 
-    // === Collaborators ===
     if (Array.isArray(req.body.collaborators)) {
       const oldCollaborators = project.collaborators.map(id => id.toString());
 
-      // Evitar duplicados y owner incluido
       const newCollaborators = req.body.collaborators
         .filter(id => id !== project.owner.toString())
         .filter((id, idx, arr) => arr.indexOf(id) === idx);
 
-      // Validar que todos los IDs existan
       const usersCount = await User.countDocuments({ _id: { $in: newCollaborators } });
       if (usersCount !== newCollaborators.length) {
         return res.status(400).json({ error: "Invalid collaborator detected" });
@@ -248,18 +260,16 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
 
       project.collaborators = newCollaborators;
 
-      // === Actualizar cada usuario agregado ===
       const added = newCollaborators.filter(id => !oldCollaborators.includes(id));
-      if (added.length > 0) {
+      if (added.length) {
         await User.updateMany(
           { _id: { $in: added } },
-          { $addToSet: { projects: project._id } } // $addToSet evita duplicados
+          { $addToSet: { projects: project._id } }
         );
       }
 
-      // === Opcional: remover proyecto de usuarios eliminados ===
       const removed = oldCollaborators.filter(id => !newCollaborators.includes(id));
-      if (removed.length > 0) {
+      if (removed.length) {
         await User.updateMany(
           { _id: { $in: removed } },
           { $pull: { projects: project._id } }
@@ -269,34 +279,33 @@ router.patch("/:projectId", authMiddleware, async (req, res) => {
 
     await project.save();
     res.json(project);
+
   } catch (err) {
     console.error("Update project error:", err);
     res.status(500).json({ error: "Failed to update project" });
   }
 });
 
-// GET public projects by username (owner OR collaborator)
+// ─────────────────────────────
+// GET PUBLIC PROJECTS BY USERNAME
+// ─────────────────────────────
 router.get("/users/:username/public-projects", async (req, res) => {
   try {
     const { username } = req.params;
 
     const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     const publicProjects = await Project.find({
       visibility: "public",
-      $or: [
-        { owner: user._id },
-        { collaborators: user._id }
-      ]
+      $or: [{ owner: user._id }, { collaborators: user._id }]
     })
       .sort({ updatedAt: -1 })
       .select("name icon slug subject updatedAt owner collaborators")
-      .populate("owner", "username fullName");
+      .populate("owner", "username firstName lastName");
 
     res.json(publicProjects);
+
   } catch (error) {
     console.error("Fetch public projects error:", error);
     res.status(500).json({ message: "Server error" });

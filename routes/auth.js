@@ -5,22 +5,42 @@ import User from "../models/User.js";
 
 const router = express.Router();
 
+//
+// REGISTER
+//
 router.post("/register", async (req, res) => {
   try {
     const {
       username,
       email,
-      fullName,
+      firstName,
+      lastName,
       month,
       date,
       year,
       gender,
+      country,
+      language,
+      agreements,
       password,
       confirmPassword
     } = req.body;
 
-    if (!username || !email || !fullName || !month || !date || !year || !gender || !password || !confirmPassword) {
-      return res.status(400).json({ message: "Missing fields" });
+    // Required fields check
+    if (
+      !username ||
+      !email ||
+      !firstName ||
+      !lastName ||
+      !month ||
+      !date ||
+      !year ||
+      !gender ||
+      !agreements?.privacyPolicy ||
+      !password ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
     if (password !== confirmPassword) {
@@ -42,11 +62,19 @@ router.post("/register", async (req, res) => {
     const newUser = new User({
       username,
       email,
-      fullName,
+      firstName,
+      lastName,
       month,
       date,
       year,
       gender,
+      country,
+      language,
+      agreements: {
+        privacyPolicy: true,
+        notifications: agreements.notifications ?? false,
+        cookies: agreements.cookies ?? false
+      },
       passwordHash: hash
     });
 
@@ -55,8 +83,8 @@ router.post("/register", async (req, res) => {
     res.status(201).json({ message: "User created" });
 
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -67,12 +95,12 @@ router.post("/login", async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
-    // identifier = username OR email
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Missing credentials" });
+    }
+
     const user = await User.findOne({
-      $or: [
-        { email: identifier },
-        { username: identifier }
-      ]
+      $or: [{ email: identifier }, { username: identifier }]
     });
 
     if (!user) {
@@ -84,6 +112,10 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid username/email or password" });
     }
 
+    // Update last login
+    user.lastLoginAt = new Date();
+    await user.save();
+
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
@@ -93,8 +125,8 @@ router.post("/login", async (req, res) => {
     res.json({ token });
 
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -104,19 +136,25 @@ router.post("/login", async (req, res) => {
 router.get("/me", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Missing token" });
+    if (!token) {
+      return res.status(401).json({ message: "Missing token" });
+    }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const user = await User.findById(decoded.id)
-      .select("-passwordHash")
+      .select("-passwordHash -__v")
       .populate("projects")
       .exec();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     res.json(user);
 
   } catch (error) {
-    res.status(401).json({ message: "Invalid token" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 });
 
@@ -129,10 +167,7 @@ router.get("/users/:username", async (req, res) => {
 
     const user = await User.findOne(
       { username },
-      {
-        passwordHash: 0, // no revelar lo sensible
-        __v: 0
-      }
+      { passwordHash: 0, __v: 0 }
     );
 
     if (!user) {
@@ -148,14 +183,14 @@ router.get("/users/:username", async (req, res) => {
 });
 
 //
-// GET ALL USERS (para búsqueda)
+// GET ALL USERS (search / discovery)
 //
 router.get("/users", async (req, res) => {
   try {
     const users = await User.find({}, { passwordHash: 0, __v: 0 });
     res.json(users);
   } catch (error) {
-    console.error("Get all users error:", error);
+    console.error("Get users error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
