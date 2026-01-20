@@ -113,7 +113,7 @@ router.get("/search", async (req, res) => {
       name: { $regex: query, $options: "i" }
     })
       .limit(10)
-      .populate("owner", "username fullName")
+      .populate("owner", "username firstName lastName")
       .select("name icon slug subject owner");
 
     res.json(projects);
@@ -132,8 +132,8 @@ router.get("/:slug", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const project = await Project.findOne({ slug })
-      .populate("owner", "username fullName profilePicture")
-      .populate("collaborators", "username fullName profilePicture");
+      .populate("owner", "username firstName lastName profilePicture")
+      .populate("collaborators", "username firstName lastName profilePicture");
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
