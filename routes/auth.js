@@ -27,7 +27,7 @@ router.post("/register", async (req, res) => {
 
     // ───── BASIC VALIDATION ─────
     if (
-      !username || !email || !firstName || !lastName ||
+      !username || !email || !firstName ||
       !month || !date || !year || !gender || !password || !confirmPassword ||
       !agreements || agreements.privacyPolicy === undefined
     ) {
