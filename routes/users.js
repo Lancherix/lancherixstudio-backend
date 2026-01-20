@@ -43,7 +43,8 @@ router.put("/users", auth, async (req, res) => {
       country,
       language,
       sideMenuColor,
-      themeMode
+      themeMode,
+      wallpaper
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -60,6 +61,17 @@ router.put("/users", auth, async (req, res) => {
     if (language) user.language = language;
     if (sideMenuColor) user.sideMenuColor = sideMenuColor;
     if (themeMode) user.themeMode = themeMode;
+    if (wallpaper && wallpaper.url) {
+
+      if (user.wallpaper?.public_id) {
+        await cloudinary.uploader.destroy(user.wallpaper.public_id);
+      }
+
+      user.wallpaper = {
+        url: wallpaper.url,
+        public_id: wallpaper.public_id || ""
+      };
+    }
 
     await user.save();
 
