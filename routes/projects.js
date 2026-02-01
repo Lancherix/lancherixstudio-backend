@@ -123,6 +123,49 @@ router.get("/search", async (req, res) => {
   }
 });
 
+// PATCH /api/projects/:projectId/status
+router.patch("/:projectId/status", authMiddleware, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    const allowedStatuses = [
+      "active",
+      "pinned",
+      "hidden",
+      "completed",
+      "archived",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    const isOwner = project.owner.toString() === userId;
+    const isCollaborator = project.collaborators.some(
+      id => id.toString() === userId
+    );
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    project.status = status;
+    await project.save();
+
+    res.json(project);
+  } catch (err) {
+    console.error("Update status error:", err);
+    res.status(500).json({ error: "Failed to update status" });
+  }
+});
+
 /* ─────────────────────────────
    Get single project by slug
    ───────────────────────────── */
