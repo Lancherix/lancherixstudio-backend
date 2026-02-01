@@ -56,6 +56,18 @@ const ProjectSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    status: {
+      type: String,
+      enum: [
+        "active",
+        "pinned",
+        "hidden",
+        "completed",
+        "archived",
+      ],
+      default: "active",
+      index: true,
+    },
   },
   { timestamps: true }
 );
